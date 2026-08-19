@@ -156,3 +156,25 @@ data class DestinationHighlight(
     val tripCount: Int,
     val weather: String
 )
+
+@JsonClass(generateAdapter = true)
+data class GroundedPlace(
+    val id: String = "gmap_${System.currentTimeMillis()}_${(100..999).random()}",
+    val name: String,
+    val address: String,
+    val category: PlaceCategory = PlaceCategory.FOOD,
+    val rating: Double = 4.8,
+    val reviewCount: Int = 185,
+    val openingHours: String = "07:00 - 22:30",
+    val isOpenNow: Boolean = true,
+    val latitude: Double = 11.9404,
+    val longitude: Double = 108.4583,
+    val summary: String = "",
+    val priceRange: String = "45.000đ - 120.000đ",
+    val googleMapsUrl: String = "",
+    val tags: List<String> = emptyList(),
+    val whyRecommended: String = "",
+    val isPinnedToMap: Boolean = false,
+    val imageUrl: String = "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?q=80&w=800&auto=format&fit=crop"
+)
+

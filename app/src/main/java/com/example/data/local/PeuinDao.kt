@@ -43,6 +43,9 @@ interface PlaceDao {
     suspend fun getPlaceById(placeId: String): PlaceEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPlace(place: PlaceEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPlaces(places: List<PlaceEntity>)
 
     @Query("UPDATE places SET isSaved = :isSaved WHERE id = :placeId")

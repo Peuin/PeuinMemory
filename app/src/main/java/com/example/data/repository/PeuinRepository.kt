@@ -14,6 +14,8 @@ import com.example.data.model.PlaceCategory
 import com.example.data.model.ProposedTripAction
 import com.example.data.model.Trip
 import com.example.data.model.UserProfile
+import com.example.data.model.GroundedPlace
+import com.example.data.remote.GeminiMapsGroundingService
 import com.example.data.remote.GeminiService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,6 +30,7 @@ import java.util.UUID
 class PeuinRepository(private val context: Context) {
     private val db = PeuinDatabase.getDatabase(context)
     private val geminiService = GeminiService()
+    private val geminiMapsService = GeminiMapsGroundingService()
     private val repoScope = CoroutineScope(Dispatchers.IO)
 
     private val _userProfile = MutableStateFlow(UserProfile())
@@ -276,4 +279,48 @@ class PeuinRepository(private val context: Context) {
     fun updateUserProfile(profile: UserProfile) {
         _userProfile.value = profile
     }
+
+    suspend fun searchGoogleMapsData(
+        query: String,
+        userLat: Double,
+        userLng: Double,
+        cityName: String
+    ): List<GroundedPlace> {
+        return geminiMapsService.searchPlacesWithGoogleMaps(query, userLat, userLng, cityName)
+    }
+
+    suspend fun pinGroundedPlace(groundedPlace: GroundedPlace) {
+        val placeEntity = PlaceEntity(
+            id = groundedPlace.id,
+            name = groundedPlace.name,
+            category = groundedPlace.category,
+            rating = groundedPlace.rating,
+            reviewCount = groundedPlace.reviewCount,
+            address = groundedPlace.address,
+            distanceKm = 1.5,
+            openingHours = groundedPlace.openingHours,
+            priceRange = groundedPlace.priceRange,
+            summary = groundedPlace.summary,
+            whyMatches = groundedPlace.whyRecommended.ifBlank { "Địa điểm từ dữ liệu Google Maps AI" },
+            recommendedDurationMinutes = 60,
+            bestTimeToVisit = "Buổi chiều / Tối",
+            amenities = listOf("Google Maps Grounded", "WiFi", "Chỗ đậu xe"),
+            tips = listOf("Được đề xuất từ dữ liệu Google Maps AI và cộng đồng đánh giá thực tế"),
+            imageUrl = groundedPlace.imageUrl,
+            lat = groundedPlace.latitude,
+            lng = groundedPlace.longitude,
+            isSaved = true,
+            destination = "Đà Lạt"
+        )
+        db.placeDao().insertPlace(placeEntity)
+    }
+
+    suspend fun optimizeRouteWithGoogleMaps(
+        places: List<PlaceEntity>,
+        userLat: Double,
+        userLng: Double
+    ): String {
+        return geminiMapsService.optimizeRouteWithGoogleMaps(places, userLat, userLng)
+    }
 }
+

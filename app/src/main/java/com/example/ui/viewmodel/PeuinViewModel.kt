@@ -11,6 +11,7 @@ import com.example.data.location.LocationHelper
 import com.example.data.location.UserLocation
 import com.example.data.model.ChatMessage
 import com.example.data.model.DestinationHighlight
+import com.example.data.model.GroundedPlace
 import com.example.data.model.PlaceCategory
 import com.example.data.model.ProposedTripAction
 import com.example.data.model.UserProfile
@@ -80,6 +81,16 @@ class PeuinViewModel(application: Application) : AndroidViewModel(application) {
     val isCreateMemoryOpen = MutableStateFlow(false)
     val isOnboardingPreferencesOpen = MutableStateFlow(false)
     val isAiGenerating = MutableStateFlow(false)
+
+    // Google Maps Grounding State (gemini-3.5-flash with googleMaps tool)
+    val isGoogleMapsGroundingModalOpen = MutableStateFlow(false)
+    val mapsAiSearchQuery = MutableStateFlow("")
+    val groundedPlaces = MutableStateFlow<List<GroundedPlace>>(emptyList())
+    val isGroundedSearching = MutableStateFlow(false)
+    val selectedGroundedPlace = MutableStateFlow<GroundedPlace?>(null)
+    val routeAiSummary = MutableStateFlow<String?>(null)
+    val isGeneratingRoute = MutableStateFlow(false)
+    val activeGroundedSuccessMessage = MutableStateFlow<String?>(null)
 
     // Filtered places for Explore & Map
     val filteredPlaces: StateFlow<List<PlaceEntity>> = combine(
@@ -236,4 +247,89 @@ class PeuinViewModel(application: Application) : AndroidViewModel(application) {
         repository.updateUserProfile(profile)
         isOnboardingPreferencesOpen.value = false
     }
+
+    fun searchGoogleMapsData(query: String) {
+        if (query.isBlank()) return
+        mapsAiSearchQuery.value = query
+        viewModelScope.launch {
+            isGroundedSearching.value = true
+            try {
+                val loc = userLocation.value
+                val results = repository.searchGoogleMapsData(
+                    query = query,
+                    userLat = loc?.latitude ?: 11.9404,
+                    userLng = loc?.longitude ?: 108.4583,
+                    cityName = loc?.cityName ?: "Đà Lạt"
+                )
+                groundedPlaces.value = results
+                isGoogleMapsGroundingModalOpen.value = true
+            } finally {
+                isGroundedSearching.value = false
+            }
+        }
+    }
+
+    fun pinGroundedPlaceToMap(place: GroundedPlace) {
+        viewModelScope.launch {
+            repository.pinGroundedPlace(place)
+            activeGroundedSuccessMessage.value = "Đã ghim '${place.name}' vào bản đồ và danh sách đã lưu!"
+            // Update grounded place pinned state locally
+            groundedPlaces.value = groundedPlaces.value.map {
+                if (it.id == place.id) it.copy(isPinnedToMap = true) else it
+            }
+        }
+    }
+
+    fun addGroundedPlaceToItinerary(place: GroundedPlace, dayNumber: Int = 1) {
+        viewModelScope.launch {
+            val placeEntity = PlaceEntity(
+                id = place.id,
+                name = place.name,
+                category = place.category,
+                rating = place.rating,
+                reviewCount = place.reviewCount,
+                address = place.address,
+                distanceKm = 1.5,
+                openingHours = place.openingHours,
+                priceRange = place.priceRange,
+                summary = place.summary,
+                whyMatches = place.whyRecommended,
+                recommendedDurationMinutes = 60,
+                bestTimeToVisit = "Buổi chiều",
+                amenities = listOf("Google Maps Grounded", "WiFi", "Chỗ đậu xe"),
+                tips = listOf("Được đề xuất từ dữ liệu Google Maps AI"),
+                imageUrl = place.imageUrl,
+                lat = place.latitude,
+                lng = place.longitude,
+                isSaved = true,
+                destination = "Đà Lạt"
+            )
+            repository.pinGroundedPlace(place)
+            repository.addPlaceToItinerary(placeEntity, dayNumber)
+            activeGroundedSuccessMessage.value = "Đã thêm '${place.name}' vào Ngày $dayNumber của Hành trình!"
+        }
+    }
+
+    fun generateRouteWithGoogleMaps() {
+        viewModelScope.launch {
+            isGeneratingRoute.value = true
+            try {
+                val places = filteredPlaces.value
+                val loc = userLocation.value
+                val summary = repository.optimizeRouteWithGoogleMaps(
+                    places = places,
+                    userLat = loc?.latitude ?: 11.9404,
+                    userLng = loc?.longitude ?: 108.4583
+                )
+                routeAiSummary.value = summary
+            } finally {
+                isGeneratingRoute.value = false
+            }
+        }
+    }
+
+    fun clearGroundedSuccessMessage() {
+        activeGroundedSuccessMessage.value = null
+    }
 }
+
