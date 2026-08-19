@@ -1,0 +1,6 @@
+{
+  "name": "Peuin",
+  "description": "Peuin - AI-powered social travel platform for personalized itineraries, route optimization, smart exploration, and real-time travel assistance.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
