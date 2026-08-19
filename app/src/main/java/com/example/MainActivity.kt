@@ -49,6 +49,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -77,6 +78,22 @@ import com.example.ui.theme.Slate700
 import com.example.ui.theme.SurfaceVariantLight
 import com.example.ui.viewmodel.MainTab
 import com.example.ui.viewmodel.PeuinViewModel
+
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import com.example.ui.theme.HighDensityAccentPill
+import com.example.ui.theme.Slate500
+import com.example.ui.theme.Slate900
 
 class MainActivity : ComponentActivity() {
     private val viewModel: PeuinViewModel by viewModels()
@@ -115,20 +132,23 @@ fun PeuinApp(viewModel: PeuinViewModel) {
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { viewModel.isAskPeuinOpen.value = true },
-                shape = RoundedCornerShape(18.dp),
+                shape = RoundedCornerShape(20.dp),
                 containerColor = HighDensityPrimary,
                 contentColor = Color.White,
-                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 8.dp),
+                elevation = FloatingActionButtonDefaults.elevation(
+                    defaultElevation = 6.dp,
+                    pressedElevation = 10.dp
+                ),
                 modifier = Modifier
-                    .padding(bottom = 8.dp)
-                    .size(56.dp)
+                    .padding(bottom = 4.dp)
+                    .size(54.dp)
                     .testTag("floating_ask_peuin_btn")
             ) {
                 Icon(
                     imageVector = Icons.Default.AutoAwesome,
                     contentDescription = "Hỏi Peuin AI",
                     tint = Color.White,
-                    modifier = Modifier.size(28.dp)
+                    modifier = Modifier.size(26.dp)
                 )
             }
         }
@@ -228,9 +248,9 @@ fun PeuinApp(viewModel: PeuinViewModel) {
 fun getTabIcon(tab: MainTab): ImageVector {
     return when (tab) {
         MainTab.EXPLORE -> Icons.Default.Explore
-        MainTab.MAP -> Icons.Default.Map
-        MainTab.ITINERARY -> Icons.Default.CalendarMonth
-        MainTab.MEMORIES -> Icons.Default.PhotoCamera
+        MainTab.MAP -> Icons.Default.Place
+        MainTab.ITINERARY -> Icons.Default.CalendarToday
+        MainTab.MEMORIES -> Icons.Default.PhotoLibrary
         MainTab.PROFILE -> Icons.Default.Person
     }
 }
@@ -241,46 +261,77 @@ fun PeuinBottomNavigationBar(
     onTabSelected: (MainTab) -> Unit
 ) {
     Surface(
-        color = SurfaceVariantLight,
-        shadowElevation = 4.dp,
-        border = androidx.compose.foundation.BorderStroke(1.dp, BorderColor)
+        color = Color.White,
+        shadowElevation = 12.dp,
+        border = BorderStroke(1.dp, Color(0xFFECEFF1)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("peuin_bottom_navigation_bar")
     ) {
-        NavigationBar(
-            containerColor = SurfaceVariantLight,
-            tonalElevation = 0.dp,
+        Row(
             modifier = Modifier
-                .height(64.dp)
+                .fillMaxWidth()
                 .navigationBarsPadding()
-                .testTag("peuin_bottom_navigation_bar")
+                .height(66.dp)
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             MainTab.values().forEach { tab ->
                 val isSelected = currentTab == tab
-                NavigationBarItem(
-                    selected = isSelected,
-                    onClick = { onTabSelected(tab) },
-                    icon = {
-                        Icon(
-                            imageVector = getTabIcon(tab),
-                            contentDescription = tab.title,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    },
-                    label = {
+                val scale by animateFloatAsState(
+                    targetValue = if (isSelected) 1.08f else 1.0f,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+                    label = "tab_scale"
+                )
+
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = if (isSelected) HighDensityContainer.copy(alpha = 0.7f) else Color.Transparent,
+                    modifier = Modifier
+                        .weight(1f)
+                        .scale(scale)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { onTabSelected(tab) }
+                        .testTag("nav_tab_${tab.name.lowercase()}")
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                        modifier = Modifier.padding(vertical = 6.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = getTabIcon(tab),
+                                contentDescription = tab.title,
+                                tint = if (isSelected) HighDensityPrimary else Slate500,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(2.dp))
+
                         Text(
                             text = tab.title,
-                            fontSize = 10.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                            fontSize = 11.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            color = if (isSelected) HighDensityDark else Slate500,
+                            maxLines = 1
                         )
-                    },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = HighDensityDark,
-                        selectedTextColor = HighDensityDark,
-                        indicatorColor = HighDensityContainer,
-                        unselectedIconColor = Slate700.copy(alpha = 0.7f),
-                        unselectedTextColor = Slate700.copy(alpha = 0.7f)
-                    ),
-                    modifier = Modifier.testTag("nav_tab_${tab.name.lowercase()}")
-                )
+
+                        // Subtle active indicator dot
+                        if (isSelected) {
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Box(
+                                modifier = Modifier
+                                    .size(4.dp)
+                                    .background(HighDensityPrimary, CircleShape)
+                            )
+                        }
+                    }
+                }
             }
         }
     }
