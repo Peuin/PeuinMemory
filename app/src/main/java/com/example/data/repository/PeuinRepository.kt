@@ -122,19 +122,35 @@ class PeuinRepository(private val context: Context) {
         val current = db.tripDao().getTripById(tripId) ?: return
         val days = current.days.map { day ->
             if (day.dayNumber == action.dayNumber && action.newActivity != null) {
-                val newItems = day.items.map { item ->
-                    if (item.category == PlaceCategory.LOCAL_EXPERIENCE || item.weatherWarning != null || item.id == "it_06") {
-                        action.newActivity
-                    } else {
-                        item
+                if (action.actionType == "ADD_ACTIVITY") {
+                    day.copy(items = day.items + action.newActivity)
+                } else {
+                    val newItems = day.items.map { item ->
+                        if (item.category == PlaceCategory.LOCAL_EXPERIENCE || item.weatherWarning != null || item.id == "it_06") {
+                            action.newActivity
+                        } else {
+                            item
+                        }
                     }
+                    day.copy(items = newItems)
                 }
-                day.copy(items = newItems)
             } else {
                 day
             }
         }
         db.tripDao().updateTrip(current.copy(days = days))
+    }
+
+    suspend fun addDirectItineraryItem(dayNumber: Int, item: ItineraryItem) {
+        val currentTrip = db.tripDao().getTripById("trip_dalat_01") ?: return
+        val updatedDays = currentTrip.days.map { day ->
+            if (day.dayNumber == dayNumber) {
+                day.copy(items = day.items + item)
+            } else {
+                day
+            }
+        }
+        db.tripDao().updateTrip(currentTrip.copy(days = updatedDays))
     }
 
     suspend fun addPlaceToItinerary(place: PlaceEntity, dayNumber: Int) {
@@ -261,7 +277,7 @@ class PeuinRepository(private val context: Context) {
         db.tripDao().insertTrip(newTrip)
     }
 
-    suspend fun sendMessageToPeuin(userMessage: String) {
+    suspend fun sendMessageToPeuin(userMessage: String, customApiKey: String? = null) {
         val userMsg = ChatMessage(
             id = "msg_${UUID.randomUUID()}",
             sender = "user",
@@ -272,7 +288,7 @@ class PeuinRepository(private val context: Context) {
         val currentTrip = db.tripDao().getTripById("trip_dalat_01")
         val contextInfo = "Điểm đến: ${currentTrip?.destination ?: "Đà Lạt"}, Ngân sách: ${currentTrip?.totalBudget ?: 6000000} VND, Số ngày: ${currentTrip?.durationDays ?: 3}N, Thời tiết: Có dự báo mưa chiều ngày 2 lúc 14h30."
 
-        val aiResponse = geminiService.askPeuin(userMessage, contextInfo)
+        val aiResponse = geminiService.askPeuin(userMessage, contextInfo, customApiKey)
         _chatMessages.value = _chatMessages.value + aiResponse
     }
 

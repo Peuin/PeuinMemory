@@ -178,6 +178,12 @@ class PeuinViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    val customApiKey = MutableStateFlow<String>("")
+
+    fun setCustomApiKey(key: String) {
+        customApiKey.value = key.trim()
+    }
+
     fun toggleLockItem(dayNumber: Int, itemId: String) {
         viewModelScope.launch {
             repository.toggleLockItem(dayNumber, itemId)
@@ -191,12 +197,19 @@ class PeuinViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun addDirectActivityToItinerary(item: com.example.data.model.ItineraryItem, dayNumber: Int) {
+        viewModelScope.launch {
+            repository.addDirectItineraryItem(dayNumber, item)
+        }
+    }
+
     fun sendChatMessage(message: String) {
         if (message.isBlank()) return
         viewModelScope.launch {
             isAiGenerating.value = true
             try {
-                repository.sendMessageToPeuin(message)
+                val customKey = customApiKey.value.ifBlank { null }
+                repository.sendMessageToPeuin(message, customKey)
             } finally {
                 isAiGenerating.value = false
             }
