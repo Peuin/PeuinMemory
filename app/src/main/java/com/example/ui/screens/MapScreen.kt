@@ -1,5 +1,13 @@
 package com.example.ui.screens
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,15 +24,21 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -48,7 +62,11 @@ import com.example.data.model.PlaceCategory
 import com.example.ui.components.CategoryChipsRow
 import com.example.ui.components.InteractiveMapCanvas
 import com.example.ui.components.getCategoryIcon
+import com.example.ui.theme.BorderColor
 import com.example.ui.theme.CoralSecondary
+import com.example.ui.theme.HighDensityContainer
+import com.example.ui.theme.HighDensityDark
+import com.example.ui.theme.HighDensityPrimary
 import com.example.ui.theme.Slate100
 import com.example.ui.theme.Slate200
 import com.example.ui.theme.Slate400
@@ -66,8 +84,23 @@ fun MapScreen(
     val filteredPlaces by viewModel.filteredPlaces.collectAsState()
     val selectedCategory by viewModel.selectedCategory.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
+    val userLocation by viewModel.userLocation.collectAsState()
+
     var selectedPlaceOnMap by remember { mutableStateOf<PlaceEntity?>(null) }
     var onlySavedPlaces by remember { mutableStateOf(false) }
+    var showPermissionRationaleBanner by remember { mutableStateOf(true) }
+
+    // Standard Android Activity Result Launcher for Location Permissions
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+        val coarseGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
+        if (fineGranted || coarseGranted) {
+            viewModel.refreshUserLocation()
+            showPermissionRationaleBanner = false
+        }
+    }
 
     val displayPlaces = if (onlySavedPlaces) {
         filteredPlaces.filter { it.isSaved }
@@ -85,7 +118,16 @@ fun MapScreen(
             places = displayPlaces,
             selectedPlace = selectedPlaceOnMap,
             onSelectPlace = { selectedPlaceOnMap = it },
-            onOpenDetail = { viewModel.selectedPlaceForDetail.value = it }
+            onOpenDetail = { viewModel.selectedPlaceForDetail.value = it },
+            userLocation = userLocation,
+            onRequestLocationPermission = {
+                locationPermissionLauncher.launch(
+                    arrayOf(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    )
+                )
+            }
         )
 
         // Floating Top Filter Bar Overlay
@@ -110,7 +152,7 @@ fun MapScreen(
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = "Search",
-                        tint = TealPrimary,
+                        tint = HighDensityPrimary,
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -147,7 +189,7 @@ fun MapScreen(
                     val isAll = selectedCategory == null
                     Surface(
                         shape = RoundedCornerShape(18.dp),
-                        color = if (isAll) TealPrimary else Color.White.copy(alpha = 0.95f),
+                        color = if (isAll) HighDensityPrimary else Color.White.copy(alpha = 0.95f),
                         shadowElevation = 3.dp,
                         modifier = Modifier
                             .clickable { viewModel.selectedCategory.value = null }
@@ -167,7 +209,7 @@ fun MapScreen(
                     val isSelected = selectedCategory == category
                     Surface(
                         shape = RoundedCornerShape(18.dp),
-                        color = if (isSelected) TealPrimary else Color.White.copy(alpha = 0.95f),
+                        color = if (isSelected) HighDensityPrimary else Color.White.copy(alpha = 0.95f),
                         shadowElevation = 3.dp,
                         modifier = Modifier
                             .clickable { viewModel.selectedCategory.value = category }
@@ -221,6 +263,92 @@ fun MapScreen(
                                 fontWeight = FontWeight.Bold
                             )
                         }
+                    }
+                }
+            }
+        }
+
+        // Floating Runtime Location Permission Banner
+        AnimatedVisibility(
+            visible = showPermissionRationaleBanner && (userLocation == null || !userLocation!!.isRealGps),
+            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 90.dp, start = 16.dp, end = 16.dp)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = Color.White,
+                shadowElevation = 6.dp,
+                border = androidx.compose.foundation.BorderStroke(1.dp, BorderColor),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("map_location_permission_banner")
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(HighDensityContainer, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MyLocation,
+                            contentDescription = null,
+                            tint = HighDensityPrimary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Định vị GPS chính xác",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = HighDensityDark
+                        )
+                        Text(
+                            text = "Cho phép Peuin truy cập vị trí để xem lộ trình và quán ăn gần bạn.",
+                            fontSize = 10.sp,
+                            color = Slate700,
+                            lineHeight = 13.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            locationPermissionLauncher.launch(
+                                arrayOf(
+                                    Manifest.permission.ACCESS_FINE_LOCATION,
+                                    Manifest.permission.ACCESS_COARSE_LOCATION
+                                )
+                            )
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = HighDensityPrimary),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        modifier = Modifier.testTag("grant_location_permission_button")
+                    ) {
+                        Text(
+                            text = "Cấp quyền",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    IconButton(
+                        onClick = { showPermissionRationaleBanner = false },
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Dismiss",
+                            tint = Slate400,
+                            modifier = Modifier.size(14.dp)
+                        )
                     }
                 }
             }

@@ -64,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.data.local.PlaceEntity
+import com.example.data.location.UserLocation
 import com.example.data.model.PlaceCategory
 import com.example.ui.theme.AmberAccent
 import com.example.ui.theme.CoralSecondary
@@ -86,7 +87,9 @@ fun InteractiveMapCanvas(
     selectedPlace: PlaceEntity?,
     onSelectPlace: (PlaceEntity?) -> Unit,
     onOpenDetail: (PlaceEntity) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    userLocation: UserLocation? = null,
+    onRequestLocationPermission: () -> Unit = {}
 ) {
     var zoomLevel by remember { mutableFloatStateOf(1f) }
     var showItineraryRoute by remember { mutableStateOf(true) }
@@ -282,6 +285,39 @@ fun InteractiveMapCanvas(
                     center = Offset(x, y)
                 )
             }
+
+            // 6. User GPS Location Marker
+            if (userLocation != null) {
+                val uLat = userLocation.latitude.coerceIn(minLat, maxLat)
+                val uLng = userLocation.longitude.coerceIn(minLng, maxLng)
+                val ux = ((uLng - minLng) / (maxLng - minLng) * width).toFloat()
+                val uy = ((maxLat - uLat) / (maxLat - minLat) * height).toFloat()
+
+                // Accuracy pulsing ring
+                drawCircle(
+                    color = Color(0xFF0284C7).copy(alpha = 0.25f),
+                    radius = 32f,
+                    center = Offset(ux, uy)
+                )
+                // Outer white border
+                drawCircle(
+                    color = Color.White,
+                    radius = 14f,
+                    center = Offset(ux, uy)
+                )
+                // Inner blue GPS dot
+                drawCircle(
+                    color = Color(0xFF0284C7),
+                    radius = 10f,
+                    center = Offset(ux, uy)
+                )
+                // Center core
+                drawCircle(
+                    color = Color.White,
+                    radius = 3.5f,
+                    center = Offset(ux, uy)
+                )
+            }
         }
 
         // Floating Map Controls (Top Right)
@@ -338,14 +374,17 @@ fun InteractiveMapCanvas(
                 shadowElevation = 4.dp,
                 modifier = Modifier
                     .size(40.dp)
-                    .clickable { onSelectPlace(places.firstOrNull()) }
+                    .clickable {
+                        onRequestLocationPermission()
+                        onSelectPlace(places.firstOrNull())
+                    }
                     .testTag("center_my_location")
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = Icons.Default.LocationSearching,
                         contentDescription = "My Location",
-                        tint = TealPrimary,
+                        tint = Color(0xFF0284C7),
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -355,10 +394,12 @@ fun InteractiveMapCanvas(
         // Live location pill (Top Left)
         Surface(
             shape = RoundedCornerShape(16.dp),
-            color = Slate900.copy(alpha = 0.8f),
+            color = Slate900.copy(alpha = 0.85f),
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(top = 16.dp, start = 16.dp)
+                .clickable { onRequestLocationPermission() }
+                .testTag("map_gps_status_pill")
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -371,7 +412,7 @@ fun InteractiveMapCanvas(
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "GPS: Đà Lạt • Đang định vị",
+                    text = "GPS: ${userLocation?.cityName ?: "Đà Lạt"} • Live",
                     color = Color.White,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium

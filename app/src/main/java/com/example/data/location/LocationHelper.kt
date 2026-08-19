@@ -129,30 +129,18 @@ class LocationHelper(private val context: Context) {
         }
     }
 
+    @Suppress("DEPRECATION")
     private fun reverseGeocode(latitude: Double, longitude: Double): Pair<String, String> {
         return try {
             val geocoder = Geocoder(context, Locale.forLanguageTag("vi-VN"))
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                val addresses = geocoder.getFromLocation(latitude, longitude, 1)
-                if (!addresses.isNullOrEmpty()) {
-                    val addr = addresses[0]
-                    val city = addr.adminArea ?: addr.subAdminArea ?: addr.locality ?: "Việt Nam"
-                    val full = addr.getAddressLine(0) ?: "$city, Việt Nam"
-                    Pair(city, full)
-                } else {
-                    getFallbackCity(latitude, longitude)
-                }
+            val addresses = geocoder.getFromLocation(latitude, longitude, 1)
+            if (!addresses.isNullOrEmpty()) {
+                val addr = addresses[0]
+                val city = addr.adminArea ?: addr.subAdminArea ?: addr.locality ?: "Việt Nam"
+                val full = addr.getAddressLine(0) ?: "$city, Việt Nam"
+                Pair(city, full)
             } else {
-                @Suppress("DEPRECATION")
-                val addresses = geocoder.getFromLocation(latitude, longitude, 1)
-                if (!addresses.isNullOrEmpty()) {
-                    val addr = addresses[0]
-                    val city = addr.adminArea ?: addr.subAdminArea ?: addr.locality ?: "Việt Nam"
-                    val full = addr.getAddressLine(0) ?: "$city, Việt Nam"
-                    Pair(city, full)
-                } else {
-                    getFallbackCity(latitude, longitude)
-                }
+                getFallbackCity(latitude, longitude)
             }
         } catch (e: Exception) {
             getFallbackCity(latitude, longitude)
