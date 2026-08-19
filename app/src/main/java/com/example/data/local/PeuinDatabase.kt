@@ -27,7 +27,7 @@ abstract class PeuinDatabase : RoomDatabase() {
                     context.applicationContext,
                     PeuinDatabase::class.java,
                     "peuin_travel_db"
-                ).fallbackToDestructiveMigration().build()
+                ).fallbackToDestructiveMigration(dropAllTables = true).build()
                 INSTANCE = instance
                 instance
             }

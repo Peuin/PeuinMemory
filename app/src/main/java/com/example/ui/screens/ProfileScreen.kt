@@ -268,6 +268,12 @@ fun ProfileScreen(
                 Spacer(modifier = Modifier.height(10.dp))
 
                 SettingsItem(
+                    icon = Icons.Default.LocationOn,
+                    title = "Định vị Google Maps & Tài khoản",
+                    subtitle = "Quản lý GPS vị trí lúc đăng nhập và đồng bộ",
+                    onClick = { viewModel.isAuthLocationSheetOpen.value = true }
+                )
+                SettingsItem(
                     icon = Icons.Default.Language,
                     title = "Ngôn ngữ giao diện",
                     subtitle = "Tiếng Việt (Mặc định)",

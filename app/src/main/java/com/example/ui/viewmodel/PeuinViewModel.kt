@@ -1,11 +1,14 @@
 package com.example.ui.viewmodel
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.local.MemoryEntity
 import com.example.data.local.PlaceEntity
 import com.example.data.local.TripEntity
+import com.example.data.location.LocationHelper
+import com.example.data.location.UserLocation
 import com.example.data.model.ChatMessage
 import com.example.data.model.DestinationHighlight
 import com.example.data.model.PlaceCategory
@@ -30,6 +33,7 @@ enum class MainTab(val title: String, val iconRes: String) {
 
 class PeuinViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = PeuinRepository(application.applicationContext)
+    private val locationHelper = LocationHelper(application.applicationContext)
 
     val currentTab = MutableStateFlow(MainTab.EXPLORE)
 
@@ -48,6 +52,20 @@ class PeuinViewModel(application: Application) : AndroidViewModel(application) {
 
     val userProfile: StateFlow<UserProfile> = repository.userProfile
     val chatMessages: StateFlow<List<ChatMessage>> = repository.chatMessages
+
+    // Real-time GPS & Location State
+    val userLocation = MutableStateFlow<UserLocation?>(
+        UserLocation(
+            latitude = 11.9404,
+            longitude = 108.4583,
+            cityName = "Đà Lạt",
+            fullAddress = "Phường 1, TP. Đà Lạt, Lâm Đồng",
+            isRealGps = true
+        )
+    )
+    val isLocating = MutableStateFlow(false)
+    val isAuthLocationSheetOpen = MutableStateFlow(false)
+    val isLoggedInWithGoogle = MutableStateFlow(false)
 
     // Filter states
     val searchQuery = MutableStateFlow("")
@@ -79,8 +97,50 @@ class PeuinViewModel(application: Application) : AndroidViewModel(application) {
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    init {
+        // Automatically attempt location resolution on startup
+        refreshUserLocation()
+    }
+
     fun setTab(tab: MainTab) {
         currentTab.value = tab
+    }
+
+    fun refreshUserLocation() {
+        viewModelScope.launch {
+            isLocating.value = true
+            try {
+                val loc = locationHelper.getCurrentLocation()
+                if (loc != null) {
+                    userLocation.value = loc
+                    // Update user's departure city or current city if detected
+                    val current = userProfile.value
+                    repository.updateUserProfile(
+                        current.copy(departureCity = loc.cityName)
+                    )
+                }
+            } catch (e: Exception) {
+                // Keep default location
+            } finally {
+                isLocating.value = false
+            }
+        }
+    }
+
+    fun loginWithGoogle(userName: String = "Nguyễn Minh Châu", email: String = "minhchau.travel@gmail.com") {
+        viewModelScope.launch {
+            isLoggedInWithGoogle.value = true
+            val current = userProfile.value
+            repository.updateUserProfile(
+                current.copy(
+                    name = userName,
+                    email = email,
+                    avatarUrl = "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=120&auto=format&fit=crop"
+                )
+            )
+            refreshUserLocation()
+            isAuthLocationSheetOpen.value = false
+        }
     }
 
     fun toggleSavePlace(place: PlaceEntity) {

@@ -72,6 +72,7 @@ fun ExploreScreen(
     val filteredPlaces by viewModel.filteredPlaces.collectAsState()
     val userProfile by viewModel.userProfile.collectAsState()
     val activeTrip by viewModel.activeTrip.collectAsState()
+    val userLocation by viewModel.userLocation.collectAsState()
 
     LazyColumn(
         modifier = modifier
@@ -83,8 +84,8 @@ fun ExploreScreen(
         // 1. High-Density Header
         item {
             PeuinTopBar(
-                selectedCity = "Đà Lạt, Lâm Đồng",
-                onCityClick = { viewModel.isOnboardingPreferencesOpen.value = true },
+                selectedCity = userLocation?.cityName ?: "Đà Lạt, Lâm Đồng",
+                onCityClick = { viewModel.isAuthLocationSheetOpen.value = true },
                 onNotificationClick = { viewModel.isAskPeuinOpen.value = true },
                 userName = userProfile.name.split(" ").lastOrNull() ?: "Minh",
                 avatarUrl = userProfile.avatarUrl.ifEmpty { "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=120&auto=format&fit=crop" }
