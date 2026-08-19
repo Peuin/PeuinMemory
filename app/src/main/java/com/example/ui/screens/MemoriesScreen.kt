@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -46,6 +47,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -134,50 +136,59 @@ fun MemoryCard(
     onShare: () -> Unit
 ) {
     Card(
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp)
+            .padding(horizontal = 16.dp)
             .testTag("memory_card_${memory.id}")
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(vertical = 14.dp)) {
             // Author & Place Header
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
                     AsyncImage(
                         model = memory.authorAvatar.ifBlank { "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80" },
                         contentDescription = memory.author,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
-                            .size(42.dp)
+                            .size(44.dp)
                             .clip(CircleShape)
                     )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Column {
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = memory.author,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            color = Slate900
+                            fontSize = 15.sp,
+                            color = Slate900,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 imageVector = Icons.Default.LocationOn,
                                 contentDescription = null,
                                 tint = TealPrimary,
-                                modifier = Modifier.size(12.dp)
+                                modifier = Modifier.size(13.dp)
                             )
-                            Spacer(modifier = Modifier.width(2.dp))
+                            Spacer(modifier = Modifier.width(3.dp))
                             Text(
                                 text = "${memory.placeName} • ${memory.date}",
-                                fontSize = 11.sp,
-                                color = Slate500
+                                fontSize = 12.sp,
+                                color = Slate500,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
@@ -198,20 +209,52 @@ fun MemoryCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Photo
             if (memory.imageUrl.isNotBlank()) {
-                AsyncImage(
-                    model = memory.imageUrl,
-                    contentDescription = memory.placeName,
-                    contentScale = ContentScale.Crop,
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(200.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                )
-                Spacer(modifier = Modifier.height(10.dp))
+                        .padding(horizontal = 14.dp)
+                        .aspectRatio(1.42f)
+                        .clip(RoundedCornerShape(18.dp))
+                ) {
+                    AsyncImage(
+                        model = memory.imageUrl,
+                        contentDescription = memory.placeName,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                    if (memory.isAiMemoryCardGenerated) {
+                        Surface(
+                            shape = RoundedCornerShape(999.dp),
+                            color = Color.White.copy(alpha = 0.92f),
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .padding(10.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AutoAwesome,
+                                    contentDescription = null,
+                                    tint = AmberAccent,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(5.dp))
+                                Text(
+                                    text = "AI Memory",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Slate700
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             // Note text
@@ -219,63 +262,85 @@ fun MemoryCard(
                 text = memory.note,
                 style = MaterialTheme.typography.bodyMedium,
                 color = Slate900,
-                lineHeight = 20.sp
+                fontSize = 15.sp,
+                lineHeight = 22.sp,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
             )
 
             // AI Memory Card Insight Badge
             if (!memory.aiInsight.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(10.dp))
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = Slate100
+                    shape = RoundedCornerShape(14.dp),
+                    color = TealContainer,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            tint = TealPrimary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = memory.aiInsight,
-                            fontSize = 11.sp,
+                            fontSize = 12.sp,
                             color = Slate700,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.SemiBold,
+                            lineHeight = 18.sp
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Interactions Row
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = if (memory.isLikedByUser) CoralSecondary.copy(alpha = 0.12f) else Slate100,
+                        modifier = Modifier.clickable { onLikeToggle() }
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (memory.isLikedByUser) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                contentDescription = "Like",
+                                tint = if (memory.isLikedByUser) CoralSecondary else Slate400,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(5.dp))
+                            Text(
+                                text = "${memory.likesCount}",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (memory.isLikedByUser) CoralSecondary else Slate500
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
-                            .clickable { onLikeToggle() }
-                            .padding(end = 16.dp)
-                    ) {
-                        Icon(
-                            imageVector = if (memory.isLikedByUser) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = "Like",
-                            tint = if (memory.isLikedByUser) CoralSecondary else Slate400,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "${memory.likesCount}",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (memory.isLikedByUser) CoralSecondary else Slate500
-                        )
-                    }
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(end = 16.dp)
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(Slate100)
+                            .padding(horizontal = 10.dp, vertical = 7.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.ChatBubbleOutline,
@@ -294,9 +359,9 @@ fun MemoryCard(
 
                 IconButton(
                     onClick = onShare,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(36.dp)
                 ) {
-                    Icon(Icons.Default.Share, contentDescription = "Share", tint = Slate500, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.Share, contentDescription = "Share", tint = Slate500, modifier = Modifier.size(18.dp))
                 }
             }
         }
